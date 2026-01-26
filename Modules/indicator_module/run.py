@@ -1,23 +1,30 @@
-# technical_module.py
 """
-Technical Analyzer — Multi-Timeframe Version (for M3A Fusion System)
-Analyzes multiple timeframes to produce a more robust buy/sell/hold signal.
+Indicator Module - Technical Analysis
+Provides technical analysis using multi-timeframe indicators.
 """
-
 import yfinance as yf
 import pandas as pd
 import ta
+from APIs.indicator_calculators.indicators import (
+    compute_rsi, compute_stochrsi, compute_macd, compute_bollinger_bands
+)
+from ta.trend import ADXIndicator, CCIIndicator
+from ta.momentum import ROCIndicator, WilliamsRIndicator
+from ta.volume import OnBalanceVolumeIndicator
+from ta.volatility import KeltnerChannel
 
-# --- Timeframes to check ---
-TIMEFRAMES = ["5m", "15m", "1h", "1d"]
-
-# --- Weight for each timeframe ---
-# (You can adjust these — longer timeframes carry more weight)
-TIMEFRAME_WEIGHTS = {
-    "5m": 0.15,
-    "15m": 0.25,
-    "1h": 0.3,
-    "1d": 0.3
+# Weights for different indicators
+WEIGHTS = {
+    "RSI": 10,
+    "StochRSI": 7,
+    "MACD": 15,
+    "MA Crossover": 15,
+    "ADX": 10,
+    "Bollinger": 10,
+    "Keltner": 8,
+    "OBV": 8,
+    "CCI": 7,
+    "ROC": 5
 }
 
 
@@ -82,7 +89,13 @@ def analyze_single_timeframe(ticker, interval):
 
 def analyze_technical(ticker):
     """Analyze across all timeframes and fuse results"""
-    print(f"📈 Multi-Timeframe Technical Analysis for {ticker}...")
+    TIMEFRAMES = ["5m", "15m", "1h", "1d"]
+    TIMEFRAME_WEIGHTS = {
+        "5m": 0.15,
+        "15m": 0.25,
+        "1h": 0.3,
+        "1d": 0.3
+    }
 
     results = []
     total_weight = 0
@@ -128,9 +141,6 @@ def analyze_technical(ticker):
     ]
     summary = " | ".join(summary_lines)
 
-    print(f"🕒 Timeframe Summary: {summary}")
-    print(f"🔎 Final Signal: {signal} ({final_conf:.1f}% confidence)\n")
-
     return {
         "module": "Technical Analyzer",
         "ticker": ticker,
@@ -138,3 +148,26 @@ def analyze_technical(ticker):
         "confidence": round(final_conf, 1),
         "details": results
     }
+
+
+def run_indicator_module(input_data: dict) -> dict:
+    """
+    Main entry point for indicator module.
+    
+    Args:
+        input_data: Dictionary containing:
+            - ticker: Stock ticker symbol (e.g., "TVSMOTOR.NS")
+            - interval: Optional, default "15m"
+            - period: Optional, default "60d"
+    
+    Returns:
+        dict: Technical analysis results with signal, confidence, etc.
+    """
+    ticker = input_data.get("ticker")
+    if not ticker:
+        raise ValueError("ticker is required in input_data")
+    
+    # Use the multi-timeframe analysis
+    result = analyze_technical(ticker)
+    
+    return result
