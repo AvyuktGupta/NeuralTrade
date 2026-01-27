@@ -1,10 +1,12 @@
 """
 Indicator Module - Technical Analysis
-Provides technical analysis using multi-timeframe indicators.
+Provides technical analysis using configurable timeframe indicators.
 """
+import os
 import yfinance as yf
 import pandas as pd
 import ta
+from dotenv import load_dotenv
 from APIs.indicator_calculators.indicators import (
     compute_rsi, compute_stochrsi, compute_macd, compute_bollinger_bands
 )
@@ -13,19 +15,43 @@ from ta.momentum import ROCIndicator, WilliamsRIndicator
 from ta.volume import OnBalanceVolumeIndicator
 from ta.volatility import KeltnerChannel
 
+load_dotenv()
+
 # Weights for different indicators
 WEIGHTS = {
-    "RSI": 10,
-    "StochRSI": 7,
-    "MACD": 15,
-    "MA Crossover": 15,
-    "ADX": 10,
-    "Bollinger": 10,
-    "Keltner": 8,
-    "OBV": 8,
-    "CCI": 7,
-    "ROC": 5
+    "RSI": int(os.getenv("WEIGHT_RSI", "10")),
+    "StochRSI": int(os.getenv("WEIGHT_STOCHRSI", "7")),
+    "MACD": int(os.getenv("WEIGHT_MACD", "15")),
+    "MA Crossover": int(os.getenv("WEIGHT_MA_CROSSOVER", "15")),
+    "ADX": int(os.getenv("WEIGHT_ADX", "10")),
+    "Bollinger": int(os.getenv("WEIGHT_BOLLINGER", "10")),
+    "Keltner": int(os.getenv("WEIGHT_KELTNER", "8")),
+    "OBV": int(os.getenv("WEIGHT_OBV", "8")),
+    "CCI": int(os.getenv("WEIGHT_CCI", "7")),
+    "ROC": int(os.getenv("WEIGHT_ROC", "5"))
 }
+
+
+def minutes_to_interval(timeframe_minutes: int) -> str:
+    """
+    Convert minutes to yfinance interval format.
+    
+    Args:
+        timeframe_minutes: Number of minutes (e.g., 1, 5, 15, 30, 60)
+    
+    Returns:
+        str: yfinance interval string (e.g., "1m", "5m", "15m", "1h", "1d")
+    """
+    if timeframe_minutes < 60:
+        return f"{timeframe_minutes}m"
+    elif timeframe_minutes == 60:
+        return "1h"
+    elif timeframe_minutes < 1440:  # Less than 1 day
+        hours = timeframe_minutes // 60
+        return f"{hours}h"
+    else:  # 1 day or more
+        days = timeframe_minutes // 1440
+        return f"{days}d"
 
 
 def analyze_single_timeframe(ticker, interval):
@@ -87,42 +113,10 @@ def analyze_single_timeframe(ticker, interval):
         return None
 
 
-def analyze_technical(ticker):
-    """Analyze across all timeframes and fuse results"""
-    TIMEFRAMES = ["5m", "15m", "1h", "1d"]
-    TIMEFRAME_WEIGHTS = {
-        "5m": 0.15,
-        "15m": 0.25,
-        "1h": 0.3,
-        "1d": 0.3
-    }
-
-    results = []
-    total_weight = 0
-    weighted_sum = 0
-
-    # analyze each timeframe
-    for tf in TIMEFRAMES:
-        res = analyze_single_timeframe(ticker, tf)
-        if not res:
-            continue
-        results.append(res)
-
-        # convert signal to numeric
-        val = 0
-        if res["signal"] == "BUY":
-            val = 1
-        elif res["signal"] == "SELL":
-            val = -1
-        else:
-            val = 0
-
-        # apply weight
-        w = TIMEFRAME_WEIGHTS.get(tf, 0.25)
-        weighted_sum += val * w * res["confidence"]
-        total_weight += w * 100
-
-    if total_weight == 0:
+def analyze_technical(ticker, interval: str):
+    """Analyze technical indicators for a single timeframe"""
+    res = analyze_single_timeframe(ticker, interval)
+    if not res:
         return {
             "module": "Technical Analyzer",
             "ticker": ticker,
@@ -130,44 +124,46 @@ def analyze_technical(ticker):
             "confidence": 0,
             "details": []
         }
-
-    final_score = weighted_sum / total_weight * 100  # normalized -100 to 100 range
-    final_conf = abs(final_score)
-    signal = "BUY" if final_score > 15 else "SELL" if final_score < -15 else "HOLD"
-
-    # summary string
-    summary_lines = [
-        f"{r['timeframe']:>4}: {r['signal']:<4} ({r['confidence']}%)" for r in results
-    ]
-    summary = " | ".join(summary_lines)
-
+    
     return {
         "module": "Technical Analyzer",
         "ticker": ticker,
-        "signal": signal,
-        "confidence": round(final_conf, 1),
-        "details": results
+        "signal": res["signal"],
+        "confidence": res["confidence"],
+        "details": [res]
     }
 
 
-def run_indicator_module(input_data: dict) -> dict:
+def run_indicator_module(input_data: dict, timeframe_minutes: int = 15) -> dict:
     """
     Main entry point for indicator module.
     
     Args:
         input_data: Dictionary containing:
             - ticker: Stock ticker symbol (e.g., "TVSMOTOR.NS")
-            - interval: Optional, default "15m"
-            - period: Optional, default "60d"
+        timeframe_minutes: Candle interval in minutes (e.g., 1, 3, 5, 10, 15, 30, 60).
+                          Default is 15 minutes.
     
     Returns:
-        dict: Technical analysis results with signal, confidence, etc.
+        dict: Technical analysis results with signal, confidence, timeframe_minutes, etc.
     """
+    # Validate timeframe_minutes
+    if not isinstance(timeframe_minutes, int):
+        raise ValueError(f"timeframe_minutes must be an integer, got {type(timeframe_minutes).__name__}")
+    if timeframe_minutes <= 0:
+        raise ValueError(f"timeframe_minutes must be > 0, got {timeframe_minutes}")
+    
     ticker = input_data.get("ticker")
     if not ticker:
         raise ValueError("ticker is required in input_data")
     
-    # Use the multi-timeframe analysis
-    result = analyze_technical(ticker)
+    # Convert minutes to yfinance interval format
+    interval = minutes_to_interval(timeframe_minutes)
+    
+    # Analyze the single timeframe
+    result = analyze_technical(ticker, interval)
+    
+    # Add timeframe_minutes to output
+    result["timeframe_minutes"] = timeframe_minutes
     
     return result

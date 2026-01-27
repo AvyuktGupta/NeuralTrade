@@ -2,26 +2,30 @@
 Trust Module - Fundamental Analysis
 Provides fundamental analysis and trustworthiness scoring.
 """
+import os
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import math
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Default weights for scoring
 WEIGHTS = {
-    "eps_growth": 15,
-    "revenue_growth": 15,
-    "roe": 12,
-    "de_ratio": 12,
-    "profit_margin": 10,
-    "fcf_trend": 12,
-    "current_ratio": 8,
-    "marketcap_stability": 6,
-    "insider_flow": 10
+    "eps_growth": int(os.getenv("WEIGHT_EPS_GROWTH", "15")),
+    "revenue_growth": int(os.getenv("WEIGHT_REVENUE_GROWTH", "15")),
+    "roe": int(os.getenv("WEIGHT_ROE", "12")),
+    "de_ratio": int(os.getenv("WEIGHT_DE_RATIO", "12")),
+    "profit_margin": int(os.getenv("WEIGHT_PROFIT_MARGIN", "10")),
+    "fcf_trend": int(os.getenv("WEIGHT_FCF_TREND", "12")),
+    "current_ratio": int(os.getenv("WEIGHT_CURRENT_RATIO", "8")),
+    "marketcap_stability": int(os.getenv("WEIGHT_MARKETCAP_STABILITY", "6")),
+    "insider_flow": int(os.getenv("WEIGHT_INSIDER_FLOW", "10"))
 }
 
-YEARS_TO_CHECK = 3
-MIN_DATA_YEARS = 2
+YEARS_TO_CHECK = int(os.getenv("YEARS_TO_CHECK", "3"))
+MIN_DATA_YEARS = int(os.getenv("MIN_DATA_YEARS", "1"))
 
 
 def safe_get_first_matching_index(df: pd.DataFrame, keywords):

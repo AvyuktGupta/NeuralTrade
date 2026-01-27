@@ -23,13 +23,16 @@ warnings.filterwarnings("ignore")
 # -----------------------------------------------------
 # 🔧 CONFIG
 FUSION_WEIGHTS = {
-    "technical": 0.35,
-    "fundamental": 0.35,
-    "sentiment": 0.15,
-    "risk": 0.15
+    "technical": float(os.getenv("FUSION_WEIGHT_TECHNICAL", "0.35")),
+    "fundamental": float(os.getenv("FUSION_WEIGHT_FUNDAMENTAL", "0.35")),
+    "sentiment": float(os.getenv("FUSION_WEIGHT_SENTIMENT", "0.15")),
+    "risk": float(os.getenv("FUSION_WEIGHT_RISK", "0.15"))
 }
 
-STOCKS = ["TVSMOTOR.NS", "TCS.NS", "RELIANCE.NS"]
+STOCKS = os.getenv("STOCKS_LIST", "TVSMOTOR.NS,TCS.NS,RELIANCE.NS").split(",")
+
+# Candle timeframe configuration
+CANDLE_TIMEFRAME_MINUTES = int(os.getenv("CANDLE_TIMEFRAME_MINUTES", "15"))
 
 # -----------------------------------------------------
 # 🧠 Fusion Logic
@@ -45,7 +48,7 @@ def fuse_models(ticker):
     """
     # Run indicator module (technical analysis)
     print(f"  🔍 Running technical analysis for {ticker}...")
-    technical = run_indicator_module({"ticker": ticker})
+    technical = run_indicator_module({"ticker": ticker}, timeframe_minutes=CANDLE_TIMEFRAME_MINUTES)
     
     # Run trust module (fundamental analysis)
     print(f"  🧠 Running fundamental analysis for {ticker}...")
