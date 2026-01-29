@@ -13,6 +13,7 @@ import warnings
 from dotenv import load_dotenv
 from Modules.indicator_module.run import run_indicator_module
 from Modules.trust_module.run import run_trust_module
+from Modules.sentiment_module.run import run_sentiment_module
 from APIs.telegram_messenger.telegram import send_telegram_message
 
 # Load environment variables
@@ -54,8 +55,14 @@ def fuse_models(ticker):
     print(f"  🧠 Running fundamental analysis for {ticker}...")
     fundamental = run_trust_module({"ticker": ticker})
 
-    # Placeholder modules
-    sentiment = {"verdict": "Neutral", "score": 50}
+    # Run sentiment module (news-based sentiment)
+    print(f"  📰 Running sentiment analysis for {ticker}...")
+    try:
+        sentiment = run_sentiment_module(ticker)
+    except Exception:
+        sentiment = {"verdict": "Neutral", "score": 50}
+
+    # Placeholder module
     risk = {"verdict": "Moderate", "score": 60}
 
     # Extract scores
