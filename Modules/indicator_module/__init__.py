@@ -1,1 +1,0 @@
-# Indicator module package

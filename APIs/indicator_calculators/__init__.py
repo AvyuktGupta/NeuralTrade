@@ -1,1 +1,0 @@
-# Indicator calculators API package
